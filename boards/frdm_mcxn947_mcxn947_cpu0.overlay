@@ -8,7 +8,7 @@
     status = "okay";
 
     accel_sensor: accelerometer@18 {
-        compatible = "nxp,fxls8974";
+        compatible = "nxp,fxls8974cf";
         reg = <0x18>;
         status = "okay";
     };
