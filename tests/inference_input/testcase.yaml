@@ -1,0 +1,7 @@
+tests:
+  inference.input.validation:
+    platform_allow:
+      - native_sim
+    tags:
+      - inference
+      - unit

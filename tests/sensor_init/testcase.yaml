@@ -1,0 +1,7 @@
+tests:
+  sensor.init.no_device:
+    platform_allow:
+      - native_sim
+    tags:
+      - sensor
+      - unit
