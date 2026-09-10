@@ -1,6 +1,6 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
-#include "sensor_collect.h"
+#include "sensor/sensor_collect.h"
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_INF);
 

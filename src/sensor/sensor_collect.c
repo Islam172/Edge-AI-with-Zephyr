@@ -9,7 +9,7 @@ LOG_MODULE_REGISTER(sensor_collect, LOG_LEVEL_INF);
 
 #ifdef CONFIG_SENSOR_COLLECT_RUN_INFERENCE
   #ifdef CONFIG_SENSOR_INFENG_EMLEARN
-    #include "inf-eng/emlearn/emlearn_model.h"
+    #include "inference_engine/emlearn/emlearn_model.h"
     static int (*SNS_MODEL_Init)(void) = &EMLEARN_MODEL_Init;
     static int (*SNS_MODEL_RunInference)(void *inputData, size_t size,
         int8_t *predClass, int32_t *tinf_us, uint8_t verbose) =

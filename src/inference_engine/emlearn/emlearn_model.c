@@ -6,7 +6,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 
-#include "src/sensor/sensor_collect.h"
+#include "sensor/sensor_collect.h"
 #include "inference_engine/emlearn/emlearn_model.h"
 #include "inference_engine/emlearn/axis_scaler.h"
 #include "inference_engine/emlearn/model.h"
