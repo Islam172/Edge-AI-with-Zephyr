@@ -6,24 +6,8 @@
     };
 };
 
-&pinctrl {
-    pinmux_flexcomm2_lpi2c: pinmux_flexcomm2_lpi2c {
-        group0 {
-            pinmux = <FC2_P0_PIO0_24>,
-                     <FC2_P1_PIO0_25>;
-            slew-rate = "fast";
-            drive-strength = "low";
-            input-enable;
-            bias-pull-up;
-            drive-open-drain;
-        };
-    };
-};
-
 &flexcomm2_lpi2c2 {
     status = "okay";
-    pinctrl-0 = <&pinmux_flexcomm2_lpi2c>;
-    pinctrl-names = "default";
     clock-frequency = <I2C_BITRATE_STANDARD>;
 
     accel_sensor: accelerometer@18 {
