@@ -1,0 +1,194 @@
+name: CI/CD — Embedded ML Zephyr Pipeline
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'Python_Pipeline/**'
+      - 'src/**'
+      - 'CMakeLists.txt'
+      - 'Kconfig'
+      - 'prj*.conf'
+      - 'boards/**'
+      - 'tests/**'
+      - '.github/workflows/**'
+  workflow_dispatch: {}
+
+# ============================================================
+#  JOB 1 — CI: Training + Build
+# ============================================================
+jobs:
+  ci:
+    name: CI — Train and Build
+    runs-on: ubuntu-latest
+
+    env:
+      PYTHON_DIR: Python_Pipeline
+      VENV_DIR: .venv_ci
+      ZEPHYR_BASE: ~/zephyrproject/zephyr
+      BOARD: frdm_mcxn947/mcxn947/cpu0
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check Python version
+        shell: bash
+        run: python3 --version
+
+      - name: Create venv and install dependencies
+        working-directory: ${{ env.PYTHON_DIR }}
+        shell: bash
+        run: |
+          python3 -m venv ${{ env.VENV_DIR }}
+          source ${{ env.VENV_DIR }}/bin/activate
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run training pipeline
+        working-directory: ${{ env.PYTHON_DIR }}
+        shell: bash
+        run: |
+          source ${{ env.VENV_DIR }}/bin/activate
+          python3 main.py
+
+      - name: Find newest artifact directory
+        shell: bash
+        working-directory: ${{ env.PYTHON_DIR }}
+        run: |
+          latest=$(ls -1d artifacts/* | sort -r | head -n 1)
+          echo "LATEST_ARTIFACT_DIR=$latest" >> $GITHUB_ENV
+          echo "Latest artifact dir: $latest"
+
+      - name: Copy generated headers into Zephyr project
+        shell: bash
+        run: |
+          SRC_AXIS_SCALER="${{ env.PYTHON_DIR }}/${{ env.LATEST_ARTIFACT_DIR }}/feature_extraction/axis_scaler.h"
+          SRC_MODEL_H="${{ env.PYTHON_DIR }}/${{ env.LATEST_ARTIFACT_DIR }}/model_trainer/model.h"
+
+          DEST_DIR="src/inference_engine/emlearn"
+          mkdir -p "$DEST_DIR"
+
+          cp "$SRC_AXIS_SCALER" "$DEST_DIR/axis_scaler.h"
+          cp "$SRC_MODEL_H"     "$DEST_DIR/model.h"
+
+          echo "Copied axis_scaler.h and model.h into Zephyr project"
+
+      - name: West update
+        shell: bash
+        run: |
+          source ~/.venv/bin/activate
+          cd ~/zephyrproject
+          west update
+
+      - name: Build firmware (west build)
+        shell: bash
+        run: |
+          source ~/.venv/bin/activate
+          cd ~/zephyrproject
+
+          west build \
+            -b ${{ env.BOARD }} \
+            ${{ github.workspace }} \
+            -d ${{ github.workspace }}/build \
+            -- -DCONF_FILE="prj.conf;prj_inf.conf" || {
+              echo "west build failed"
+              exit 1
+            }
+
+          echo "Build successful"
+          ls -la ${{ github.workspace }}/build/zephyr/zephyr.bin
+
+      - name: Upload firmware binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: zephyr-firmware-${{ github.sha }}
+          path: ${{ github.workspace }}/build/zephyr/zephyr.bin
+          retention-days: 30
+
+# ============================================================
+#  JOB 2 — TEST: Twister auf native_sim
+# ============================================================
+  test:
+    name: Test — Twister native_sim
+    runs-on: ubuntu-latest
+    needs: ci
+    if: success()
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: West update
+        shell: bash
+        run: |
+          source ~/.venv/bin/activate
+          cd ~/zephyrproject
+          west update
+
+      - name: Run Twister tests
+        shell: bash
+        run: |
+          source ~/.venv/bin/activate
+          cd ~/zephyrproject
+
+          west twister \
+            -T ${{ github.workspace }}/tests \
+            -p native_sim \
+            --inline-logs \
+            --output-dir ${{ github.workspace }}/twister-out || {
+              echo "Twister tests failed"
+              exit 1
+            }
+
+      - name: Upload Twister results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: twister-results-${{ github.sha }}
+          path: ${{ github.workspace }}/twister-out
+          retention-days: 30
+
+# ============================================================
+#  JOB 3 — CD: Flash (nur wenn CI + TEST erfolgreich)
+# ============================================================
+  cd:
+    name: CD — Flash Firmware
+    runs-on: ubuntu-latest
+    needs: [ ci, test ]
+    if: success()
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download firmware binary
+        uses: actions/download-artifact@v4
+        with:
+          name: zephyr-firmware-${{ github.sha }}
+          path: ${{ github.workspace }}/build/zephyr
+
+      - name: Verify firmware binary exists
+        shell: bash
+        run: |
+          BINARY="${{ github.workspace }}/build/zephyr/zephyr.bin"
+          if [ ! -f "$BINARY" ]; then
+            echo "ERROR: Firmware binary not found: $BINARY"
+            exit 1
+          fi
+          echo "Firmware binary found: $(ls -lh $BINARY)"
+
+      - name: Flash firmware to board
+        if: false
+        shell: bash
+        run: |
+          source ~/.venv/bin/activate
+          cd ~/zephyrproject
+
+          west flash \
+            -d ${{ github.workspace }}/build || {
+              echo "Flashing failed"
+              exit 1
+            }
+
+          echo "Flashing successful!"
