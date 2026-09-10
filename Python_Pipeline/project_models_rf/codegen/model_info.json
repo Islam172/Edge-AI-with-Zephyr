@@ -1,0 +1,10 @@
+{
+  "fs_hz": 200,
+  "win": 128,
+  "hop": 64,
+  "feat_dim": 6,
+  "class_order": [
+    0,
+    1
+  ]
+}

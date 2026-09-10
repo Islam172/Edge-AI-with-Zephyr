@@ -4,14 +4,14 @@ project(fan_anomaly_detection)
 
 target_sources(app PRIVATE
     src/main.c
-    src/sensor_raw.c
-    src/sensor_collect.c
+    src/sensor/sensor_raw.c
+    src/sensor/sensor_collect.c
 )
 
 if(CONFIG_SENSOR_COLLECT_RUN_INFERENCE)
   if(CONFIG_SENSOR_INFENG_EMLEARN)
     target_sources(app PRIVATE
-        src/inf-eng/emlearn/emlearn_model.c
+        src/inference_engine/emlearn/emlearn_model.c
     )
     target_include_directories(app PRIVATE
         ${ZEPHYR_EMLEARN_MODULE_DIR}

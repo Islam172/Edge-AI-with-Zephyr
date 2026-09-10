@@ -5,7 +5,7 @@ choice
     default SENSOR_COLLECT_RUN_INFERENCE
 
 config SENSOR_COLLECT_LOG_EXT
-    bool "Collect and log sensor data"
+    bool "Collect and log sensor data externally"
 
 config SENSOR_COLLECT_RUN_INFERENCE
     bool "Collect data and run inference"
@@ -24,6 +24,38 @@ config SENSOR_INFENG_EMLEARN
 
 endchoice
 
+choice
+    prompt "Data format"
+    default SENSOR_DATA_FORMAT_INTERLEAVED
+
+config SENSOR_DATA_FORMAT_BLOCKS
+    bool "Blocks"
+
+config SENSOR_DATA_FORMAT_INTERLEAVED
+    bool "Interleaved"
+
+endchoice
+
+config SENSOR_INFENG_VERBOSE
+    bool "Enable inference verbose output"
+    default y
+
 endif # SENSOR_COLLECT_RUN_INFERENCE
+
+config CLSF_CHANNELS
+    int "Number of classifier channels"
+    default 3
+
+config CLSF_WINDOW
+    int "Classifier window length in samples"
+    default 128
+
+config SENSOR_COLLECT_QUEUE_ITEMS
+    int "Sensor queue size"
+    default 200
+
+config SENSOR_COLLECT_RATE_HZ
+    int "Sampling rate in Hz"
+    default 200
 
 source "Kconfig.zephyr"
