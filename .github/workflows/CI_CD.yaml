@@ -1,0 +1,261 @@
+name: CI/CD — Embedded ML Zephyr Pipeline
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'Python_Pipeline/**'
+      - 'src/**'
+      - 'CMakeLists.txt'
+      - 'Kconfig'
+      - 'prj*.conf'
+      - 'boards/**'
+      - 'tests/**'
+      - 'west.yml'
+      - '.github/workflows/**'
+  workflow_dispatch: {}
+
+# ============================================================
+#  JOB 1 — CI: Training + Build
+# ============================================================
+jobs:
+  ci:
+    name: CI — Train and Build
+    runs-on: ubuntu-latest
+
+    env:
+      PYTHON_DIR: Python_Pipeline
+      VENV_DIR: .venv_ci
+      BOARD: frdm_mcxn947/mcxn947/cpu0
+      ZEPHYR_SDK_VERSION: 0.17.0
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # --- Cache Zephyr SDK ---
+      - name: Cache Zephyr SDK
+        id: cache-sdk
+        uses: actions/cache@v4
+        with:
+          path: ~/zephyr-sdk-${{ env.ZEPHYR_SDK_VERSION }}
+          key: zephyr-sdk-${{ env.ZEPHYR_SDK_VERSION }}-arm
+
+      # --- Cache Zephyr workspace ---
+      - name: Cache Zephyr workspace
+        id: cache-workspace
+        uses: actions/cache@v4
+        with:
+          path: ~/zephyrproject
+          key: zephyrproject-${{ hashFiles('west.yml') }}
+
+      # --- System Dependencies ---
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q \
+            git cmake ninja-build gperf \
+            ccache device-tree-compiler \
+            python3-dev python3-pip \
+            xz-utils file make \
+            gcc gcc-multilib g++-multilib \
+            libsdl2-dev
+
+      # --- West ---
+      - name: Install West
+        run: pip3 install west
+
+      # --- Zephyr SDK --- nur wenn nicht gecacht
+      - name: Install Zephyr SDK
+        if: steps.cache-sdk.outputs.cache-hit != 'true'
+        run: |
+          cd ~
+          wget -q https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v${{ env.ZEPHYR_SDK_VERSION }}/zephyr-sdk-${{ env.ZEPHYR_SDK_VERSION }}_linux-x86_64_minimal.tar.xz
+          tar xf zephyr-sdk-${{ env.ZEPHYR_SDK_VERSION }}_linux-x86_64_minimal.tar.xz
+          cd zephyr-sdk-${{ env.ZEPHYR_SDK_VERSION }}
+          ./setup.sh -t arm-zephyr-eabi -h
+
+      - name: Register Zephyr SDK
+        run: |
+          cmake -P ~/zephyr-sdk-${{ env.ZEPHYR_SDK_VERSION }}/cmake/zephyr_sdk_export.cmake
+
+      # --- Zephyr Workspace --- nur wenn nicht gecacht
+      - name: Initialize Zephyr workspace
+        if: steps.cache-workspace.outputs.cache-hit != 'true'
+        run: |
+          west init -m https://github.com/Islam172/Edge-AI-with-Zephyr \
+            --mr main ~/zephyrproject
+          cd ~/zephyrproject
+          west update
+
+      - name: Install Zephyr Python requirements
+        run: |
+          pip3 install -r ~/zephyrproject/zephyr/scripts/requirements.txt
+
+      # --- Python Training Dependencies ---
+      - name: Install Python training dependencies
+        working-directory: ${{ env.PYTHON_DIR }}
+        run: |
+          python3 -m venv ${{ env.VENV_DIR }}
+          source ${{ env.VENV_DIR }}/bin/activate
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # --- Training Pipeline ---
+      - name: Run training pipeline
+        working-directory: ${{ env.PYTHON_DIR }}
+        run: |
+          source ${{ env.VENV_DIR }}/bin/activate
+          python3 main.py
+
+      # --- Neuesten Artifact finden ---
+      - name: Find newest artifact directory
+        working-directory: ${{ env.PYTHON_DIR }}
+        run: |
+          latest=$(ls -1d artifacts/* | sort -r | head -n 1)
+          echo "LATEST_ARTIFACT_DIR=$latest" >> $GITHUB_ENV
+          echo "Latest artifact dir: $latest"
+
+      # --- Headers kopieren ---
+      - name: Copy generated headers into Zephyr project
+        run: |
+          SRC_AXIS_SCALER="${{ env.PYTHON_DIR }}/${{ env.LATEST_ARTIFACT_DIR }}/feature_extraction/axis_scaler.h"
+          SRC_MODEL_H="${{ env.PYTHON_DIR }}/${{ env.LATEST_ARTIFACT_DIR }}/model_trainer/model.h"
+          DEST_DIR="src/inference_engine/emlearn"
+          mkdir -p "$DEST_DIR"
+          cp "$SRC_AXIS_SCALER" "$DEST_DIR/axis_scaler.h"
+          cp "$SRC_MODEL_H"     "$DEST_DIR/model.h"
+          echo "Copied axis_scaler.h and model.h into $DEST_DIR"
+
+      # --- West Build ---
+      - name: Build firmware (west build)
+        run: |
+          cd ~/zephyrproject
+          west build \
+            -b ${{ env.BOARD }} \
+            ${{ github.workspace }} \
+            -d ${{ github.workspace }}/build \
+            -- -DCONF_FILE="prj.conf;prj_inf.conf" || {
+              echo "west build failed"
+              exit 1
+            }
+          echo "Build successful"
+          ls -la ${{ github.workspace }}/build/zephyr/zephyr.bin
+
+      # --- Binary hochladen ---
+      - name: Upload firmware binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: zephyr-firmware-${{ github.sha }}
+          path: ${{ github.workspace }}/build/zephyr/zephyr.bin
+          retention-days: 30
+
+# ============================================================
+#  JOB 2 — TEST: Twister auf native_sim
+# ============================================================
+  test:
+    name: Test — Twister native_sim
+    runs-on: ubuntu-latest
+    needs: ci
+    if: success()
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # --- Cache Zephyr workspace ---
+      - name: Cache Zephyr workspace
+        id: cache-workspace
+        uses: actions/cache@v4
+        with:
+          path: ~/zephyrproject
+          key: zephyrproject-${{ hashFiles('west.yml') }}
+
+      # --- Minimale System Dependencies ---
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q \
+            git cmake ninja-build gperf \
+            device-tree-compiler \
+            python3-dev python3-pip \
+            make gcc gcc-multilib \
+            libsdl2-dev
+
+      # --- West ---
+      - name: Install West
+        run: pip3 install west
+
+      # --- Workspace --- nur wenn nicht gecacht
+      - name: Initialize Zephyr workspace
+        if: steps.cache-workspace.outputs.cache-hit != 'true'
+        run: |
+          west init -m https://github.com/Islam172/Edge-AI-with-Zephyr \
+            --mr main ~/zephyrproject
+          cd ~/zephyrproject
+          west update
+
+      - name: Install Zephyr Python requirements
+        run: |
+          pip3 install -r ~/zephyrproject/zephyr/scripts/requirements.txt
+
+      # --- Twister Tests ---
+      - name: Run Twister tests on native_sim
+        run: |
+          cd ~/zephyrproject
+          west twister \
+            -T ${{ github.workspace }}/tests \
+            -p native_sim \
+            --inline-logs \
+            --output-dir ${{ github.workspace }}/twister-out || {
+              echo "Twister tests failed"
+              exit 1
+            }
+
+      # --- Ergebnisse hochladen ---
+      - name: Upload Twister results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: twister-results-${{ github.sha }}
+          path: ${{ github.workspace }}/twister-out
+          retention-days: 30
+
+# ============================================================
+#  JOB 3 — CD: Flash
+# ============================================================
+  cd:
+    name: CD — Flash Firmware
+    runs-on: ubuntu-latest
+    needs: [ ci, test ]
+    if: success()
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download firmware binary
+        uses: actions/download-artifact@v4
+        with:
+          name: zephyr-firmware-${{ github.sha }}
+          path: ${{ github.workspace }}/build/zephyr
+
+      - name: Verify firmware binary exists
+        run: |
+          BINARY="${{ github.workspace }}/build/zephyr/zephyr.bin"
+          if [ ! -f "$BINARY" ]; then
+            echo "ERROR: Firmware binary not found"
+            exit 1
+          fi
+          echo "Firmware binary found: $(ls -lh $BINARY)"
+
+      - name: Flash firmware to board
+        if: false
+        run: |
+          cd ~/zephyrproject
+          west flash \
+            -d ${{ github.workspace }}/build || {
+              echo "Flashing failed"
+              exit 1
+            }
+          echo "Flashing successful!"
