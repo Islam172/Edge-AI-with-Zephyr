@@ -1,0 +1,29 @@
+mainmenu "Fan Anomaly Detection"
+
+choice
+    prompt "Sensor collect action"
+    default SENSOR_COLLECT_RUN_INFERENCE
+
+config SENSOR_COLLECT_LOG_EXT
+    bool "Collect and log sensor data"
+
+config SENSOR_COLLECT_RUN_INFERENCE
+    bool "Collect data and run inference"
+
+endchoice
+
+if SENSOR_COLLECT_RUN_INFERENCE
+
+choice
+    prompt "Inference engine"
+    default SENSOR_INFENG_EMLEARN
+
+config SENSOR_INFENG_EMLEARN
+    bool "emlearn (Random Forest)"
+    select EMLEARN
+
+endchoice
+
+endif # SENSOR_COLLECT_RUN_INFERENCE
+
+source "Kconfig.zephyr"
