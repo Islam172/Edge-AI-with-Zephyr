@@ -25,43 +25,73 @@ jobs:
     env:
       PYTHON_DIR: Python_Pipeline
       VENV_DIR: .venv_ci
-      ZEPHYR_BASE: ~/zephyrproject/zephyr
       BOARD: frdm_mcxn947/mcxn947/cpu0
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Check Python version
-        shell: bash
-        run: python3 --version
+      # --- Zephyr Dependencies installieren ---
+      - name: Install Zephyr dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            git cmake ninja-build gperf \
+            ccache dfu-util device-tree-compiler wget \
+            python3-dev python3-pip python3-setuptools \
+            python3-tk python3-wheel xz-utils file \
+            make gcc gcc-multilib g++-multilib \
+            libsdl2-dev libmagic1
 
-      - name: Create venv and install dependencies
+      # --- West installieren ---
+      - name: Install West
+        run: |
+          pip3 install west
+
+      # --- Zephyr SDK installieren ---
+      - name: Install Zephyr SDK
+        run: |
+          cd ~
+          wget -q https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v0.17.0/zephyr-sdk-0.17.0_linux-x86_64.tar.xz
+          tar xf zephyr-sdk-0.17.0_linux-x86_64.tar.xz
+          cd zephyr-sdk-0.17.0
+          ./setup.sh -t arm-zephyr-eabi -h
+          cmake -P ~/zephyr-sdk-0.17.0/cmake/zephyr_sdk_export.cmake
+
+      # --- Zephyr Workspace initialisieren ---
+      - name: Initialize Zephyr workspace
+        run: |
+          west init ~/zephyrproject
+          cd ~/zephyrproject
+          west update
+          pip3 install -r ~/zephyrproject/zephyr/scripts/requirements.txt
+
+      # --- Python Dependencies für Training ---
+      - name: Install Python training dependencies
         working-directory: ${{ env.PYTHON_DIR }}
-        shell: bash
         run: |
           python3 -m venv ${{ env.VENV_DIR }}
           source ${{ env.VENV_DIR }}/bin/activate
           pip install --upgrade pip
           pip install -r requirements.txt
 
+      # --- Training Pipeline ---
       - name: Run training pipeline
         working-directory: ${{ env.PYTHON_DIR }}
-        shell: bash
         run: |
           source ${{ env.VENV_DIR }}/bin/activate
           python3 main.py
 
+      # --- Neuesten Artifact finden ---
       - name: Find newest artifact directory
-        shell: bash
         working-directory: ${{ env.PYTHON_DIR }}
         run: |
           latest=$(ls -1d artifacts/* | sort -r | head -n 1)
           echo "LATEST_ARTIFACT_DIR=$latest" >> $GITHUB_ENV
           echo "Latest artifact dir: $latest"
 
+      # --- Headers kopieren ---
       - name: Copy generated headers into Zephyr project
-        shell: bash
         run: |
           SRC_AXIS_SCALER="${{ env.PYTHON_DIR }}/${{ env.LATEST_ARTIFACT_DIR }}/feature_extraction/axis_scaler.h"
           SRC_MODEL_H="${{ env.PYTHON_DIR }}/${{ env.LATEST_ARTIFACT_DIR }}/model_trainer/model.h"
@@ -72,21 +102,12 @@ jobs:
           cp "$SRC_AXIS_SCALER" "$DEST_DIR/axis_scaler.h"
           cp "$SRC_MODEL_H"     "$DEST_DIR/model.h"
 
-          echo "Copied axis_scaler.h and model.h into Zephyr project"
+          echo "Copied axis_scaler.h and model.h"
 
-      - name: West update
-        shell: bash
-        run: |
-          source ~/.venv/bin/activate
-          cd ~/zephyrproject
-          west update
-
+      # --- West Build ---
       - name: Build firmware (west build)
-        shell: bash
         run: |
-          source ~/.venv/bin/activate
           cd ~/zephyrproject
-
           west build \
             -b ${{ env.BOARD }} \
             ${{ github.workspace }} \
@@ -95,10 +116,9 @@ jobs:
               echo "west build failed"
               exit 1
             }
-
           echo "Build successful"
-          ls -la ${{ github.workspace }}/build/zephyr/zephyr.bin
 
+      # --- Binary hochladen ---
       - name: Upload firmware binary
         uses: actions/upload-artifact@v4
         with:
@@ -119,19 +139,39 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: West update
-        shell: bash
+      - name: Install Zephyr dependencies
         run: |
-          source ~/.venv/bin/activate
+          sudo apt-get update
+          sudo apt-get install -y \
+            git cmake ninja-build gperf \
+            ccache dfu-util device-tree-compiler wget \
+            python3-dev python3-pip python3-setuptools \
+            python3-tk python3-wheel xz-utils file \
+            make gcc gcc-multilib g++-multilib \
+            libsdl2-dev libmagic1
+
+      - name: Install West
+        run: pip3 install west
+
+      - name: Install Zephyr SDK
+        run: |
+          cd ~
+          wget -q https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v0.17.0/zephyr-sdk-0.17.0_linux-x86_64.tar.xz
+          tar xf zephyr-sdk-0.17.0_linux-x86_64.tar.xz
+          cd zephyr-sdk-0.17.0
+          ./setup.sh -t arm-zephyr-eabi -h
+          cmake -P ~/zephyr-sdk-0.17.0/cmake/zephyr_sdk_export.cmake
+
+      - name: Initialize Zephyr workspace
+        run: |
+          west init ~/zephyrproject
           cd ~/zephyrproject
           west update
+          pip3 install -r ~/zephyrproject/zephyr/scripts/requirements.txt
 
       - name: Run Twister tests
-        shell: bash
         run: |
-          source ~/.venv/bin/activate
           cd ~/zephyrproject
-
           west twister \
             -T ${{ github.workspace }}/tests \
             -p native_sim \
@@ -169,7 +209,6 @@ jobs:
           path: ${{ github.workspace }}/build/zephyr
 
       - name: Verify firmware binary exists
-        shell: bash
         run: |
           BINARY="${{ github.workspace }}/build/zephyr/zephyr.bin"
           if [ ! -f "$BINARY" ]; then
@@ -180,15 +219,11 @@ jobs:
 
       - name: Flash firmware to board
         if: false
-        shell: bash
         run: |
-          source ~/.venv/bin/activate
           cd ~/zephyrproject
-
           west flash \
             -d ${{ github.workspace }}/build || {
               echo "Flashing failed"
               exit 1
             }
-
           echo "Flashing successful!"
