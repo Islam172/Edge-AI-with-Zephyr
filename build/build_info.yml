@@ -1,5 +1,0 @@
-west:
-  command: /home/codespace/.python/current/bin/west build -b frdm_mcxn947/mcxn947/cpu0
-    Anomalie_Detection -d Anomalie_Detection/build -- -DCONF_FILE=prj.conf;prj_inf.conf
-  topdir: /workspaces
-  version: 1.5.0
