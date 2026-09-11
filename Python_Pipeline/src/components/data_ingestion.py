@@ -19,6 +19,7 @@ class DataIngestion:
         - ds_norm  -> ds_norm_file_path
         - ds_anom  -> ds_anom_file_path
         - ds_all   -> ds_all_file_path
+        
     """
  
     def __init__(self, config: DataIngestionConfig):
