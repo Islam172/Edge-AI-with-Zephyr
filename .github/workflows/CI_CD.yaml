@@ -88,6 +88,15 @@ jobs:
           cd ~/zephyrproject
           west update
 
+      - name: Debug west modules
+        run: |
+         echo "=== Modules HAL ==="
+         ls ~/zephyrproject/modules/hal/ 2>/dev/null || echo "hal dir not found"
+         echo "=== FXLS8974 driver ==="
+         find ~/zephyrproject -name "fxls8974.c" 2>/dev/null
+         echo "=== hal_nxp ==="
+         ls ~/zephyrproject/modules/hal/nxp 2>/dev/null | head -5 || echo "hal_nxp not found"    
+
       - name: Install Zephyr Python requirements
         run: |
           pip3 install -r ~/zephyrproject/zephyr/scripts/requirements.txt

@@ -11,7 +11,7 @@
     clock-frequency = <I2C_BITRATE_STANDARD>;
 
     accel_sensor: accelerometer@18 {
-        compatible = "nxp,fxls8974cf";
+        compatible = "nxp,fxls8974";
         reg = <0x18>;
         status = "okay";
     };
