@@ -216,7 +216,7 @@ jobs:
             -T ${{ github.workspace }}/tests \
             -p native_sim \
             --inline-logs \
-            --output-dir ${{ github.workspace }}/twister-out || {
+            -o ${{ github.workspace }}/twister-out || {
               echo "Twister tests failed"
               exit 1
             }
