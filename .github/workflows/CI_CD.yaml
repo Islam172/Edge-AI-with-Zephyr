@@ -33,7 +33,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # --- Cache Zephyr SDK ---
       - name: Cache Zephyr SDK
         id: cache-sdk
         uses: actions/cache@v4
@@ -41,7 +40,6 @@ jobs:
           path: ~/zephyr-sdk-${{ env.ZEPHYR_SDK_VERSION }}
           key: zephyr-sdk-${{ env.ZEPHYR_SDK_VERSION }}-arm
 
-      # --- Cache Zephyr workspace ---
       - name: Cache Zephyr workspace
         id: cache-workspace
         uses: actions/cache@v4
@@ -49,7 +47,6 @@ jobs:
           path: ~/zephyrproject
           key: zephyrproject-${{ hashFiles('west.yml') }}
 
-      # --- System Dependencies ---
       - name: Install system dependencies
         run: |
           sudo apt-get update -q
@@ -61,11 +58,9 @@ jobs:
             gcc gcc-multilib g++-multilib \
             libsdl2-dev
 
-      # --- West ---
       - name: Install West
         run: pip3 install west
 
-      # --- Zephyr SDK --- nur wenn nicht gecacht
       - name: Install Zephyr SDK
         if: steps.cache-sdk.outputs.cache-hit != 'true'
         run: |
@@ -79,7 +74,6 @@ jobs:
         run: |
           cmake -P ~/zephyr-sdk-${{ env.ZEPHYR_SDK_VERSION }}/cmake/zephyr_sdk_export.cmake
 
-      # --- Zephyr Workspace --- nur wenn nicht gecacht
       - name: Initialize Zephyr workspace
         if: steps.cache-workspace.outputs.cache-hit != 'true'
         run: |
@@ -88,20 +82,10 @@ jobs:
           cd ~/zephyrproject
           west update
 
-      - name: Debug west modules
-        run: |
-         echo "=== Modules HAL ==="
-         ls ~/zephyrproject/modules/hal/ 2>/dev/null || echo "hal dir not found"
-         echo "=== FXLS8974 driver ==="
-         find ~/zephyrproject -name "fxls8974.c" 2>/dev/null
-         echo "=== hal_nxp ==="
-         ls ~/zephyrproject/modules/hal/nxp 2>/dev/null | head -5 || echo "hal_nxp not found"    
-
       - name: Install Zephyr Python requirements
         run: |
           pip3 install -r ~/zephyrproject/zephyr/scripts/requirements.txt
 
-      # --- Python Training Dependencies ---
       - name: Install Python training dependencies
         working-directory: ${{ env.PYTHON_DIR }}
         run: |
@@ -110,14 +94,12 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements.txt
 
-      # --- Training Pipeline ---
       - name: Run training pipeline
         working-directory: ${{ env.PYTHON_DIR }}
         run: |
           source ${{ env.VENV_DIR }}/bin/activate
           python3 main.py
 
-      # --- Neuesten Artifact finden ---
       - name: Find newest artifact directory
         working-directory: ${{ env.PYTHON_DIR }}
         run: |
@@ -125,7 +107,6 @@ jobs:
           echo "LATEST_ARTIFACT_DIR=$latest" >> $GITHUB_ENV
           echo "Latest artifact dir: $latest"
 
-      # --- Headers kopieren ---
       - name: Copy generated headers into Zephyr project
         run: |
           SRC_AXIS_SCALER="${{ env.PYTHON_DIR }}/${{ env.LATEST_ARTIFACT_DIR }}/feature_extraction/axis_scaler.h"
@@ -136,7 +117,6 @@ jobs:
           cp "$SRC_MODEL_H"     "$DEST_DIR/model.h"
           echo "Copied axis_scaler.h and model.h into $DEST_DIR"
 
-      # --- West Build ---
       - name: Build firmware (west build)
         run: |
           cd ~/zephyrproject
@@ -151,7 +131,6 @@ jobs:
           echo "Build successful"
           ls -la ${{ github.workspace }}/build/zephyr/zephyr.bin
 
-      # --- Binary hochladen ---
       - name: Upload firmware binary
         uses: actions/upload-artifact@v4
         with:
@@ -168,11 +147,20 @@ jobs:
     needs: ci
     if: success()
 
+    env:
+      ZEPHYR_SDK_VERSION: 0.17.0
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # --- Cache Zephyr workspace ---
+      - name: Cache Zephyr SDK
+        id: cache-sdk
+        uses: actions/cache@v4
+        with:
+          path: ~/zephyr-sdk-${{ env.ZEPHYR_SDK_VERSION }}
+          key: zephyr-sdk-${{ env.ZEPHYR_SDK_VERSION }}-x86
+
       - name: Cache Zephyr workspace
         id: cache-workspace
         uses: actions/cache@v4
@@ -180,7 +168,6 @@ jobs:
           path: ~/zephyrproject
           key: zephyrproject-${{ hashFiles('west.yml') }}
 
-      # --- Minimale System Dependencies ---
       - name: Install system dependencies
         run: |
           sudo apt-get update -q
@@ -191,11 +178,22 @@ jobs:
             make gcc gcc-multilib \
             libsdl2-dev
 
-      # --- West ---
       - name: Install West
         run: pip3 install west
 
-      # --- Workspace --- nur wenn nicht gecacht
+      - name: Install Zephyr SDK
+        if: steps.cache-sdk.outputs.cache-hit != 'true'
+        run: |
+          cd ~
+          wget -q https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v${{ env.ZEPHYR_SDK_VERSION }}/zephyr-sdk-${{ env.ZEPHYR_SDK_VERSION }}_linux-x86_64_minimal.tar.xz
+          tar xf zephyr-sdk-${{ env.ZEPHYR_SDK_VERSION }}_linux-x86_64_minimal.tar.xz
+          cd zephyr-sdk-${{ env.ZEPHYR_SDK_VERSION }}
+          ./setup.sh -t x86_64-zephyr-elf -h
+
+      - name: Register Zephyr SDK
+        run: |
+          cmake -P ~/zephyr-sdk-${{ env.ZEPHYR_SDK_VERSION }}/cmake/zephyr_sdk_export.cmake
+
       - name: Initialize Zephyr workspace
         if: steps.cache-workspace.outputs.cache-hit != 'true'
         run: |
@@ -208,7 +206,6 @@ jobs:
         run: |
           pip3 install -r ~/zephyrproject/zephyr/scripts/requirements.txt
 
-      # --- Twister Tests ---
       - name: Run Twister tests on native_sim
         run: |
           cd ~/zephyrproject
@@ -221,7 +218,6 @@ jobs:
               exit 1
             }
 
-      # --- Ergebnisse hochladen ---
       - name: Upload Twister results
         if: always()
         uses: actions/upload-artifact@v4
