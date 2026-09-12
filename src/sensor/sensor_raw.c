@@ -9,7 +9,9 @@ LOG_MODULE_REGISTER(sensor_raw, LOG_LEVEL_INF);
 
 #define ACCEL_NODE DT_ALIAS(accel0)
 
+#if DT_NODE_EXISTS(ACCEL_NODE)
 static const struct device *accel_dev;
+#endif
 
 int SENSOR_Init(void)
 {
@@ -18,12 +20,10 @@ int SENSOR_Init(void)
     return -ENODEV;
 #else
     accel_dev = DEVICE_DT_GET(ACCEL_NODE);
-
     if (!device_is_ready(accel_dev)) {
         LOG_ERR("Sensor device not ready");
         return -ENODEV;
     }
-
     LOG_INF("Sensor initialized successfully");
     return 0;
 #endif
