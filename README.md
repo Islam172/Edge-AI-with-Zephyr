@@ -21,7 +21,7 @@ Das Ziel war nicht das Schreiben von Code, sondern das Denken und Entscheiden al
 
 ## Hardware
 
-![Hardware](docs/images/hardware.png)
+<img src="docs/images/hardware.png" width="400"/>
 
 **NXP FRDM-MCXN947** Mikrocontroller mit angeschlossenem Beschleunigungssensor,
 montiert auf einem Lüfter zur Schwingungserfassung.
