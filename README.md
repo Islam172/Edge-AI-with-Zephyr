@@ -21,7 +21,7 @@ Das Ziel war nicht das Schreiben von Code, sondern das Denken und Entscheiden al
 
 ## Hardware
 
-![Hardware](docs/images/system.png)
+![Hardware](docs/images/hardware.png)
 
 **NXP FRDM-MCXN947** Mikrocontroller mit angeschlossenem Beschleunigungssensor,
 montiert auf einem Lüfter zur Schwingungserfassung.
@@ -152,22 +152,7 @@ Die Tests demonstrieren zwei DfT-Prinzipien (Design for Testability):
 
 ## Projektstruktur
 
-Edge-AI-with-Zephyr/
-├── src/
-│ ├── sensor/ — Sensordaten erfassen und auslesen
-│ ├── inference_engine/
-│ │ └── emlearn/ — KI-Modell ausführen
-│ └── main.c — Einstiegspunkt der Anwendung
-├── Python_Pipeline/ — MLOps-Pipeline (Training → Deployment)
-├── tests/ — Automatisierte Tests
-├── boards/ — Hardware-Konfiguration je Board
-├── .github/workflows/ — CI/CD Pipeline
-├── CMakeLists.txt — Build-Konfiguration
-├── Kconfig — Software-Konfiguration
-├── prj.conf — Projektkonfiguration
-├── prj_inf.conf — Konfiguration für Inferenzmodus
-├── prj_log.conf — Konfiguration für Datenerfassungsmodus
-└── west.yml — Abhängigkeiten und Module
+![Projektstruktur](docs/images/struktur.png)
 
 
 ---
