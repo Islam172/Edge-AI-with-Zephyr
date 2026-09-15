@@ -135,14 +135,14 @@ Das Deployment auf das physische Gerät ist vorbereitet und wird
 
 ## Testergebnisse
 
-![Tests](docs/images/tests.png)
+<img src="docs/images/tests.png" width="500"/>
 
 Zwei automatisierte Tests laufen bei jedem Build:
 
 | Test | Beschreibung | Ergebnis |
 |---|---|---|
 | `sensor.init.no_device` | Sensor-Initialisierung gibt -ENODEV ohne Hardware | ✅ PASSED |
-| `inference.input.validation` | Inference-Engine validiert fehlerhafte Eingaben korrekt | ✅ PASSED (4 Testfälle) |
+| `inference.input.validation` | Das KI-Modell reagiert korrekt auf ungültige Eingaben und gibt definierte Fehlercodes zurück | ✅ PASSED (4 Testfälle) |
 
 Die Tests demonstrieren zwei DfT-Prinzipien (Design for Testability):
 **Beobachtbarkeit** (definierte Rückgabecodes) und **Steuerbarkeit**
