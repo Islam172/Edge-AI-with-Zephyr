@@ -152,7 +152,7 @@ Die Tests demonstrieren zwei DfT-Prinzipien (Design for Testability):
 
 ## Projektstruktur
 
-![Projektstruktur](docs/images/struktur.png)
+<img src="docs/images/struktur.png" width="400"/>
 
 
 ---
