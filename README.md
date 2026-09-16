@@ -12,9 +12,8 @@ Dieses Projekt entstand im Rahmen meines Praktikums und verbindet zwei Themenber
 Das Ziel: Ein KI-Modell erkennt in Echtzeit ob ein Lüfter normal läuft oder eine Anomalie
 vorliegt.
 
-**Transparenzhinweis:** Die Implementierung der Programmcode-Module wurde mit KI-Unterstützung erarbeitet. Mein Beitrag liegt in den Ingenieurstätigkeiten:
-Systemarchitektur, Technologieauswahl und -begründung, MLOps-Pipeline-Design,
-und CI/CD-Integration.
+**Transparenzhinweis:** Die Implementierung von Programmcode wurde mit KI-Unterstützung erarbeitet. Mein Beitrag liegt in den Ingenieurstätigkeiten:
+Systemarchitektur, Technologieauswahl und -begründung, MLOps-Pipeline und Integration mit Edge-AI, sowie Design der CI/CD-Pipeline.
 Das Ziel war nicht das Schreiben von Code, sondern das Denken und Entscheiden als Ingenieur.
 
 ---
@@ -98,7 +97,7 @@ als Alternative gewählt um klassische ML-Ansätze im Kontext von Edge-AI zu erk
 ## Von MCUXpresso zu Zephyr
 
 Das Projekt wurde zunächst erfolgreich auf der **NXP MCUXpresso IDE** entwickelt
-und auf dem FRDM-MCXN947 Board getestet. Anschließend erfolgte eine Portierung im Rahmen meiner Bachelorarbeit auf das Framework **ZephyrRTOS**.
+und auf dem FRDM-MCXN947 Board getestet (siehe LinkedIn "Islam Elmaaroufi" für Demo-Video). Anschließend erfolgte eine Portierung im Rahmen meiner Bachelorarbeit auf das Framework **ZephyrRTOS**.
 
 **Warum Zephyr?**
 
