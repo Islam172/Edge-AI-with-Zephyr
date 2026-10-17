@@ -12,9 +12,6 @@ Dieses Projekt entstand im Rahmen meines Praktikums und verbindet zwei Themenber
 Das Ziel: Ein KI-Modell erkennt in Echtzeit ob ein Lüfter normal läuft oder eine Anomalie
 vorliegt.
 
-**Transparenzhinweis:** Die Implementierung von Programmcode wurde mit KI-Unterstützung erarbeitet. Mein Beitrag liegt in den Ingenieurstätigkeiten:
-Systemarchitektur, Technologieauswahl und -begründung, MLOps-Pipeline und Integration mit Edge-AI, sowie Design der CI/CD-Pipeline.
-Das Ziel war nicht das Schreiben von Code, sondern das Denken und Entscheiden als Ingenieur.
 
 ---
 
@@ -167,5 +164,8 @@ Die Tests demonstrieren zwei DfT-Prinzipien (Design for Testability):
 
 ---
 
+**Transparenzhinweis:** Die Implementierung von Programmcode wurde mit KI-Unterstützung erarbeitet. Mein Beitrag liegt in den Ingenieurstätigkeiten:
+Systemarchitektur, Technologieauswahl und -begründung, MLOps-Pipeline und Integration mit Edge-AI, sowie Design der CI/CD-Pipeline.
+Das Ziel war nicht das Schreiben von Code, sondern das Denken und Entscheiden als Ingenieur.
 
-
+---
